@@ -475,13 +475,7 @@ install -d -m 755 $RPM_BUILD_ROOT%{_var}/spacewalk/systemlogs
 install -d -m 755 $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d
 %if 0%{?fedora}
 echo "hibernate.cache.region.factory_class=net.sf.ehcache.hibernate.SingletonEhCacheRegionFactory" >> conf/default/rhn_hibernate.conf
-%endif
-%if 0%{?fedora} && 0%{?fedora} >= 21
-echo "wrapper.java.classpath.28=/usr/share/java/log4j-1.jar" >> conf/default/rhn_taskomatic_daemon.conf
-%else
-echo "wrapper.java.classpath.28=/usr/share/java/log4j.jar" >> conf/default/rhn_taskomatic_daemon.conf
-%endif
-%if 0%{?fedora}
+echo "wrapper.java.classpath.28=/usr/share/java/log4j-1.jar" >> conf/default/rhn_taskomatic_daemon.con
 echo "wrapper.java.classpath.49=/usr/share/java/hibernate3/hibernate-core-3.jar
 wrapper.java.classpath.61=/usr/share/java/hibernate-jpa-2.0-api.jar
 wrapper.java.classpath.62=/usr/share/java/hibernate3/hibernate-ehcache-3.jar

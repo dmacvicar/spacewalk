@@ -1,0 +1,70 @@
+#!/bin/bash
+# Taskomatic wrapper script
+#
+# It reads options from the following files:
+#   - /usr/share/rhn/config-defaults/rhn_taskomatic_daemon.conf
+#   - /etc/rhn/rhn.conf
+#
+# It is mostly backward compatible with the tanuki version, except
+# that it always uses taskomatic.$key instead of wrapper.$key.
+#
+declare -A props
+# to keep order
+declare -a keys
+while read -r; do
+  [[ $REPLY = *=* ]] || continue
+  props[${REPLY%%=*}]=${REPLY#*=}
+    keys[${#keys[@]}]=${REPLY%%=*}
+done </usr/share/rhn/config-defaults/rhn_taskomatic_daemon.conf
+
+while read -r; do
+  [[ $REPLY = *=* ]] || continue
+  props[${REPLY%%=*}]=${REPLY#*=}
+  #key=
+  keys[${#keys[@]}]=${REPLY%%=*}
+done </etc/rhn/rhn.conf
+
+TASKO_CLASSPATH=""
+TASKO_LIBRARYPATH=""
+TASKO_ADDITIONAL=""
+#for prop in "${!props[@]}"
+for prop in "${keys[@]}"
+do
+    if [[ $prop == "taskomatic.java.classpath."* ]];
+    then
+        if [ "$TASKO_CLASSPATH" == "" ];
+        then
+            TASKO_CLASSPATH="${props[$prop]}"
+        else
+            TASKO_CLASSPATH="${TASKO_CLASSPATH}:${props[$prop]}"
+        fi
+    elif [[ $prop == "taskomatic.java.library.path."* ]];
+    then
+         if [ "$TASKO_LIBRARYPATH" == "" ];
+         then
+             TASKO_LIBRARYPATH="${props[$prop]}"
+         else
+             TASKO_LIBRARYPATH="${TASKO_LIBRARYPATH}:${props[$prop]}"
+         fi
+    elif [[ $prop == "taskomatic.java.additional."* ]];
+    then
+         if [ "$TASKO_ADDITIONAL" == "" ];
+         then
+             TASKO_ADDITIONAL="${props[$prop]}"
+         else
+             TASKO_ADDITIONAL="${TASKO_ADDITIONAL} ${props[$prop]}"
+         fi
+    fi
+done
+
+# log to stdout
+if [ "$IN_SYSTEMD" == "1" ];
+then
+    # in systemd, log to a whatever is configured in rhn_taskomatic.conf
+    TASKO_LOG_OPTS="-Dlog4j.ROOT=LOGFILE"
+else
+    # log to defaults
+    TASKO_LOG_OPTS="-Dlog4j.ROOT=CONSOLE"
+fi
+
+exec ${props["taskomatic.java.command"]} -Djava.library.path=${TASKO_LIBRARYPATH} -classpath ${TASKO_CLASSPATH} ${TASKO_ADDITIONAL} -Xms${props["taskomatic.java.initmemory"]}m -Xmx${props["taskomatic.java.maxmemory"]}m -Dcom.mchange.v2.log.MLog=log4j $TASKO_LOG_OPTS ${props["taskomatic.java.mainclass"]} "$@"

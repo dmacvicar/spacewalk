@@ -4,9 +4,9 @@ After=local-fs.target cobblerd.service sendmail.service postgresql.service httpd
 Requires=postgresql.service httpd.service
 
 [Service]
-Type=forking
-ExecStart=/usr/sbin/taskomatic start
-ExecStop=/usr/sbin/taskomatic stop
+Type=simple
+Environment=IN_SYSTEMD=1
+ExecStart=/usr/sbin/taskomatic
 
 [Install]
 WantedBy=multi-user.target

@@ -465,6 +465,8 @@ install -d -m 755 $RPM_BUILD_ROOT%{_prefix}/share/rhn
 install -d -m 755 $RPM_BUILD_ROOT%{_prefix}/share/rhn/unit-tests
 install -d -m 755 $RPM_BUILD_ROOT%{_prefix}/share/rhn/lib
 install -d -m 755 $RPM_BUILD_ROOT%{_prefix}/share/rhn/classes
+install -d -m 755 $RPM_BUILD_ROOT%{_prefix}/share/rhn/taskomatic
+install -d -m 755 $RPM_BUILD_ROOT%{_prefix}/share/rhn/taskomatic/classes
 install -d -m 755 $RPM_BUILD_ROOT%{_prefix}/share/rhn/config-defaults
 install -d -m 755 $RPM_BUILD_ROOT%{cobprofdir}
 install -d -m 755 $RPM_BUILD_ROOT%{cobprofdirup}
@@ -475,22 +477,19 @@ install -d -m 755 $RPM_BUILD_ROOT%{_var}/spacewalk/systemlogs
 install -d -m 755 $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d
 %if 0%{?fedora}
 echo "hibernate.cache.region.factory_class=net.sf.ehcache.hibernate.SingletonEhCacheRegionFactory" >> conf/default/rhn_hibernate.conf
-echo "wrapper.java.classpath.28=/usr/share/java/log4j-1.jar" >> conf/default/rhn_taskomatic_daemon.con
-echo "wrapper.java.classpath.49=/usr/share/java/hibernate3/hibernate-core-3.jar
-wrapper.java.classpath.61=/usr/share/java/hibernate-jpa-2.0-api.jar
-wrapper.java.classpath.62=/usr/share/java/hibernate3/hibernate-ehcache-3.jar
-wrapper.java.classpath.63=/usr/share/java/hibernate3/hibernate-c3p0-3.jar
-wrapper.java.classpath.64=/usr/share/java/hibernate*/hibernate-commons-annotations.jar
-wrapper.java.classpath.65=/usr/share/java/slf4j/api.jar
-wrapper.java.classpath.66=/usr/share/java/jboss-logging.jar
-wrapper.java.classpath.67=/usr/share/java/javassist.jar
-wrapper.java.classpath.68=/usr/share/java/ehcache-core.jar" >> conf/default/rhn_taskomatic_daemon.conf
 %else
 echo "hibernate.cache.provider_class=org.hibernate.cache.OSCacheProvider" >> conf/default/rhn_hibernate.conf
-echo "wrapper.java.classpath.49=/usr/share/java/hibernate3.jar" >> conf/default/rhn_taskomatic_daemon.conf
 %endif
 install -m 644 conf/default/rhn_hibernate.conf $RPM_BUILD_ROOT%{_prefix}/share/rhn/config-defaults/rhn_hibernate.conf
-install -m 644 conf/default/rhn_taskomatic_daemon.conf $RPM_BUILD_ROOT%{_prefix}/share/rhn/config-defaults/rhn_taskomatic_daemon.conf
+
+# Taskomatic configuration
+install -m 644 conf/default/taskomatic.classpath $RPM_BUILD_ROOT%{_prefix}/share/rhn/config-defaults/taskomatic.classpath
+install -m 644 conf/default/taskomatic.fedora.classpath $RPM_BUILD_ROOT%{_prefix}/share/rhn/config-defaults/taskomatic.fedora.classpath
+install -m 644 conf/default/taskomatic.rhel.classpath $RPM_BUILD_ROOT%{_prefix}/share/rhn/config-defaults/taskomatic.rhel.classpath
+install -m 644 conf/default/taskomatic.sles.classpath $RPM_BUILD_ROOT%{_prefix}/share/rhn/config-defaults/taskomatic.sles.classpath
+install -m 644 conf/default/taskomatic.libpath $RPM_BUILD_ROOT%{_prefix}/share/rhn/config-defaults/taskomatic.libpath
+install -m 644 conf/default/taskomatic.wrapper.conf $RPM_BUILD_ROOT%{_prefix}/share/rhn/config-defaults/taskomatic.wrapper.conf
+
 install -m 644 conf/default/rhn_org_quartz.conf $RPM_BUILD_ROOT%{_prefix}/share/rhn/config-defaults/rhn_org_quartz.conf
 install -m 644 conf/rhn_java.conf $RPM_BUILD_ROOT%{_prefix}/share/rhn/config-defaults
 install -m 755 conf/logrotate/rhn_web_api $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/rhn_web_api
@@ -499,7 +498,7 @@ install -m 755 conf/logrotate/rhn_web_api $RPM_BUILD_ROOT%{_sysconfdir}/logrotat
 sed -i 's/#LOGROTATE-3.8#//' $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/rhn_web_api
 %endif
 %if 0%{?fedora}
-install -m 755 scripts/taskomatic $RPM_BUILD_ROOT%{_sbindir}
+install -m 755 scripts/spacewalk-java-wrapper $RPM_BUILD_ROOT%{_sbindir}
 install -m 755 scripts/taskomatic.service $RPM_BUILD_ROOT%{_unitdir}
 %else
 install -m 755 scripts/taskomatic $RPM_BUILD_ROOT%{_initrddir}
@@ -517,8 +516,8 @@ install -m 644 conf/cobbler/snippets/keep_system_id  $RPM_BUILD_ROOT%{cobdirsnip
 install -m 644 conf/cobbler/snippets/post_reactivation_key  $RPM_BUILD_ROOT%{cobdirsnippets}/post_reactivation_key
 install -m 644 conf/cobbler/snippets/post_delete_system  $RPM_BUILD_ROOT%{cobdirsnippets}/post_delete_system
 install -m 644 conf/cobbler/snippets/redhat_register  $RPM_BUILD_ROOT%{cobdirsnippets}/redhat_register
+ln -s -f /usr/sbin/spacewalk-java-wrapper $RPM_BUILD_ROOT%{_bindir}/taskomatic
 
-ln -s -f /usr/sbin/tanukiwrapper $RPM_BUILD_ROOT%{_bindir}/taskomaticd
 ln -s -f %{_javadir}/ojdbc14.jar $RPM_BUILD_ROOT%{jardir}/ojdbc14.jar
 ln -s -f %{_javadir}/dwr.jar $RPM_BUILD_ROOT%{jardir}/dwr.jar
 install -d -m 755 $RPM_BUILD_ROOT%{realcobsnippetsdir}

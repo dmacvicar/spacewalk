@@ -1,21 +1,35 @@
 #!/bin/bash
-# Taskomatic wrapper script
 #
-# It reads options from the following files:
-#   - /usr/share/rhn/config-defaults/rhn_taskomatic_daemon.conf
-#   - /etc/rhn/rhn.conf
+# Wrapper script for Spacewalk Java services
 #
-# It is mostly backward compatible with the tanuki version, except
-# that it always uses taskomatic.$key instead of wrapper.$key.
+# Symlink this spacewalk-java-wrapper file to the
+# service name eg. /usr/sbin/taskomatic
 #
+# Basic options are read from:
+#   - /usr/share/rhn/config-defaults/$name.wrapper.conf
+# Classpath is read from:
+#   - /usr/share/rhn/config-defaults/$name.classpath
+#   - /usr/share/rhn/config-defaults/$name.$id.classpath
+# It takes the library path from:
+#   - /usr/share/rhn/config-defaults/$name.libpath
+#   - /usr/share/rhn/config-defaults/$name.$id.libpath
+#
+# Where id is the distribution ID in /etc/os-release
+#
+# Logging is configured in /usr/share/rhn/$name/classes
+#
+# Options can be overriden in /etc/rhn/rhn.conf
+# using the format $name.option eg:
+# taskomatic.java.maxmemory changes WRAPPER_JAVA_MAXMEMORY
+#
+#
+set -x
+. /etc/os-release
+WRAPPER_NAME="$(basename $0)"
+
 declare -A props
-# to keep order
+# to keep order of the keys, important for classpath
 declare -a keys
-while read -r; do
-  [[ $REPLY = *=* ]] || continue
-  props[${REPLY%%=*}]=${REPLY#*=}
-    keys[${#keys[@]}]=${REPLY%%=*}
-done </usr/share/rhn/config-defaults/rhn_taskomatic_daemon.conf
 
 while read -r; do
   [[ $REPLY = *=* ]] || continue
@@ -24,47 +38,64 @@ while read -r; do
   keys[${#keys[@]}]=${REPLY%%=*}
 done </etc/rhn/rhn.conf
 
-TASKO_CLASSPATH=""
-TASKO_LIBRARYPATH=""
-TASKO_ADDITIONAL=""
-#for prop in "${!props[@]}"
+DEF_CFG="/usr/share/rhn/config-defaults"
+
+WRAPPER_CLASSPATH=""
+for FILE in "$DEF_CFG/$WRAPPER_NAME.classpath" "$DEF_CFG/$WRAPPER_NAME.$ID.classpath"
+do
+    if [ -f $FILE ];
+    then
+        WRAPPER_CLASSPATH="${WRAPPER_CLASSPATH}:$(cat $FILE | xargs | tr ' ' ':')"
+    fi
+done
+WRAPPER_CLASSPATH=$(echo "${WRAPPER_CLASSPATH}" | cut -c 2-)
+
+WRAPPER_LIBRARYPATH=""
+for FILE in "$DEF_CFG/$WRAPPER_NAME.libpath" "$DEF_CFG/$WRAPPER_NAME.$ID.libpath"
+do
+    if [ -f $FILE ];
+    then
+        WRAPPER_LIBRARYPATH="${WRAPPER_LIBRARYPATH}:$(cat $FILE | xargs | tr ' ' ':')"
+    fi
+done
+WRAPPER_LIBRARYPATH=$(echo "${WRAPPER_LIBRARYPATH}" | cut -c 2-)
+
+# Read basic options
+. "$DEF_CFG/$WRAPPER_NAME.wrapper.conf"
+# Now override options with any option named like the
+# script name $name.key
 for prop in "${keys[@]}"
 do
-    if [[ $prop == "taskomatic.java.classpath."* ]];
+    if [[ $prop == "${WRAPPER_NAME}.java.classpath."* ]];
     then
-        if [ "$TASKO_CLASSPATH" == "" ];
+        if [ "$WRAPPER_CLASSPATH" == "" ];
         then
-            TASKO_CLASSPATH="${props[$prop]}"
+            WRAPPER_CLASSPATH="${props[$prop]}"
         else
-            TASKO_CLASSPATH="${TASKO_CLASSPATH}:${props[$prop]}"
+            WRAPPER_CLASSPATH="${WRAPPER_CLASSPATH}:${props[$prop]}"
         fi
-    elif [[ $prop == "taskomatic.java.library.path."* ]];
+    elif [[ $prop == "${WRAPPER_NAME}.java.library.path."* ]];
     then
-         if [ "$TASKO_LIBRARYPATH" == "" ];
+         if [ "$WRAPPER_LIBRARYPATH" == "" ];
          then
-             TASKO_LIBRARYPATH="${props[$prop]}"
+             WRAPPER_LIBRARYPATH="${props[$prop]}"
          else
-             TASKO_LIBRARYPATH="${TASKO_LIBRARYPATH}:${props[$prop]}"
+             WRAPPER_LIBRARYPATH="${WRAPPER_LIBRARYPATH}:${props[$prop]}"
          fi
-    elif [[ $prop == "taskomatic.java.additional."* ]];
+    elif [[ $prop == "${WRAPPER_NAME}.java.additional."* ]];
     then
-         if [ "$TASKO_ADDITIONAL" == "" ];
+         if [ "$WRAPPER_ADDITIONAL" == "" ];
          then
-             TASKO_ADDITIONAL="${props[$prop]}"
+             WRAPPER_ADDITIONAL="${props[$prop]}"
          else
-             TASKO_ADDITIONAL="${TASKO_ADDITIONAL} ${props[$prop]}"
+             WRAPPER_ADDITIONAL="${WRAPPER_ADDITIONAL} ${props[$prop]}"
          fi
+    else
+        if [[ ${prop} =~ ^${WRAPPER_NAME}\.(.+)$ ]]; then
+            opt=$(echo ${BASH_REMATCH[1]^^} | tr '.' '_')
+            eval WRAPPER_${opt}=$(echo -ne \"${props[$prop]}\")
+        fi
     fi
 done
 
-# log to stdout
-if [ "$IN_SYSTEMD" == "1" ];
-then
-    # in systemd, log to a whatever is configured in rhn_taskomatic.conf
-    TASKO_LOG_OPTS="-Dlog4j.ROOT=LOGFILE"
-else
-    # log to defaults
-    TASKO_LOG_OPTS="-Dlog4j.ROOT=CONSOLE"
-fi
-
-exec ${props["taskomatic.java.command"]} -Djava.library.path=${TASKO_LIBRARYPATH} -classpath ${TASKO_CLASSPATH} ${TASKO_ADDITIONAL} -Xms${props["taskomatic.java.initmemory"]}m -Xmx${props["taskomatic.java.maxmemory"]}m -Dcom.mchange.v2.log.MLog=log4j $TASKO_LOG_OPTS ${props["taskomatic.java.mainclass"]} "$@"
+exec java -Dlog4j.debug=true -Djava.library.path=${WRAPPER_LIBRARYPATH} -classpath /usr/share/rhn/${WRAPPER_NAME}/classes:${WRAPPER_CLASSPATH} ${WRAPPER_ADDITIONAL} -Xms${WRAPPER_JAVA_INITMEMORY}m -Xmx${WRAPPER_JAVA_MAXMEMORY}m -Dcom.mchange.v2.log.MLog=log4j ${WRAPPER_JAVA_MAINCLASS} "$@"

@@ -1,0 +1,10 @@
+/usr/share/java/log4j-1.jar
+/usr/share/java/hibernate3/hibernate-core-3.jar
+/usr/share/java/hibernate-jpa-2.0-api.jar
+/usr/share/java/hibernate3/hibernate-ehcache-3.jar
+/usr/share/java/hibernate3/hibernate-c3p0-3.jar
+/usr/share/java/hibernate*/hibernate-commons-annotations.jar
+/usr/share/java/slf4j/api.jar
+/usr/share/java/jboss-logging.jar
+/usr/share/java/javassist.jar
+/usr/share/java/ehcache-core.jar
